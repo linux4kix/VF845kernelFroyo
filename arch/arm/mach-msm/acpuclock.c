@@ -16,6 +16,13 @@
  * GNU General Public License for more details.
  *
  */
+#define OVERCLOCK_614400
+#define OVERCLOCK_633600
+#define OVERCLOCK_652800
+#define OVERCLOCK_672000
+#define OVERCLOCK_691200
+#define OVERCLOCK_710400
+//#define OVERCLOCK_729600
 
 #include <linux/version.h>
 #include <linux/kernel.h>
@@ -155,6 +162,27 @@ static struct clkctl_acpu_speed pll0_245_pll1_960_pll2_1056[] = {
 	{ 0, 352000, ACPU_PLL_2, 2, 2,  88000, 3, 5, 120000 },
 	{ 1, 480000, ACPU_PLL_1, 1, 1, 120000, 3, 6, 120000 },
 	{ 1, 528000, ACPU_PLL_2, 2, 1, 132000, 3, 7, 122880 },
+	#ifdef OVERCLOCK_614400
+	{ 1, 614400, ACPU_PLL_2, 2, 1, 132000, 3, 7, 122880 },
+	#endif
+	#ifdef OVERCLOCK_633600
+	{ 1, 633600, ACPU_PLL_2, 2, 1, 132000, 3, 7, 122880 },
+	#endif
+	#ifdef OVERCLOCK_652800
+	{ 1, 652800, ACPU_PLL_2, 2, 1, 132000, 3, 7, 122880 },
+	#endif
+	#ifdef OVERCLOCK_672000
+	{ 1, 672000, ACPU_PLL_2, 2, 1, 132000, 3, 7, 122880 },
+	#endif
+	#ifdef OVERCLOCK_691200
+	{ 1, 691200, ACPU_PLL_2, 2, 1, 132000, 3, 7, 122880 },
+	#endif
+	#ifdef OVERCLOCK_710400
+	{ 1, 710400, ACPU_PLL_2, 2, 1, 132000, 3, 7, 122880 },
+	#endif
+	#ifdef OVERCLOCK_729600
+	{ 1, 729600, ACPU_PLL_2, 2, 1, 132000, 3, 7, 122880 },
+	#endif
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0}, {0, 0, 0} }
 };
 
@@ -183,6 +211,27 @@ static struct clkctl_acpu_speed pll0_245_pll1_960_pll2_1200[] = {
 	{ 0, 400000, ACPU_PLL_2, 2, 2, 133333, 2, 5, 122880 },
 	{ 1, 480000, ACPU_PLL_1, 1, 1, 160000, 2, 6, 122880 },
 	{ 1, 600000, ACPU_PLL_2, 2, 1, 200000, 2, 7, 122880 },
+#ifdef OVERCLOCK_614400
+	{ 1, 614400, ACPU_PLL_2, 2, 1, 200000, 3, 7, 122880 },
+#endif
+#ifdef OVERCLOCK_633600
+	{ 1, 633600, ACPU_PLL_2, 2, 1, 200000, 3, 7, 122880 },
+#endif
+#ifdef OVERCLOCK_652800
+	{ 1, 652800, ACPU_PLL_2, 2, 1, 200000, 3, 7, 122880 },
+#endif
+#ifdef OVERCLOCK_672000
+	{ 1, 672000, ACPU_PLL_2, 2, 1, 200000, 3, 7, 122880 },
+#endif
+#ifdef OVERCLOCK_691200
+	{ 1, 691200, ACPU_PLL_2, 2, 1, 200000, 3, 7, 122880 },
+#endif
+#ifdef OVERCLOCK_710400
+	{ 1, 710400, ACPU_PLL_2, 2, 1, 200000, 3, 7, 122880 },
+#endif
+#ifdef OVERCLOCK_729600
+	{ 1, 729600, ACPU_PLL_2, 2, 1, 200000, 3, 7, 122880 },
+#endif
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0}, {0, 0, 0} }
 };
 
