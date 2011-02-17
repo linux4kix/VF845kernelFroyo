@@ -64,7 +64,7 @@
 #include <linux/hardware_self_adapt.h>
 #include <mach/pmic.h>
 
-#define DISP_BACKLIGHT_STEP(level)    ( (level)*3 + 18 )    
+#define DISP_BACKLIGHT_STEP(level)    ( (level)*3 - 40 )    // +60
 
 #define GPIO_OUT_27                    27
 #define SPI_CLK_DELAY                  1
@@ -248,7 +248,7 @@ void set_touch_exta_key_backlight(int level)
 {
     int ret = 0;
     bool use_touch_key_light = false;
-    if(machine_is_msm7x25_u8150() || machine_is_msm7x25_c8150() \ 
+    if(machine_is_msm7x25_u8150() || machine_is_msm7x25_c8150() \
       || machine_is_msm7x25_c8500() || machine_is_msm7x25_u8159())
     {
         ret = pmic_set_led_intensity(LED_LCD, (int)(!!level));
@@ -295,7 +295,7 @@ void lcd_set_backlight_pwm(int level)
 	{
 		set_touch_exta_key_backlight(level);
 	}
-    
+    set_touch_exta_key_backlight(level);
     /*config gpio 27 as gp_clk */
     gpio_tlmm_config(GPIO_CFG(GPIO_OUT_27, 1, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_2MA),GPIO_ENABLE);
 

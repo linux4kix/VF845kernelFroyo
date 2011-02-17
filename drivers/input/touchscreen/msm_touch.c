@@ -103,6 +103,7 @@
 #define Y_MAX   1024
 #define P_MAX   256
 #define TOUCH_KEY_NULL_REGION  16
+//#define TOUCH_KEY_MAX_REGION    (Y_MAX - 824)
 #define TOUCH_KEY_MAX_REGION    (Y_MAX - 824)
 
 #define TOUCH_OFFSET    4

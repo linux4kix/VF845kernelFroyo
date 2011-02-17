@@ -1,11 +1,21 @@
+/* linux/drivers/video/msm/lcdc_hx8347d_qvga.c
+ *
+ * Copyright (C) 2009-2010 HUAWEI Corporation.
+ *
+ * This software is licensed under the terms of the GNU General Public
+ * License version 2, as published by the Free Software Foundation, and
+ * may be copied, distributed, and modified under those terms.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
 
 #include <linux/delay.h>
 #include <mach/gpio.h>
 #include "msm_fb.h"
 #include "lcdc_huawei_config.h"
-
-#include <linux/proc_fs.h>
-#include <linux/uaccess.h>
 
 #define TRACE_LCD_DEBUG 0
 #if TRACE_LCD_DEBUG
@@ -22,20 +32,7 @@
 #define DEVICE_ID 				0x70 //BS0=1
 #define WRITE_REGISTER 			0x00
 #define WRITE_CONTENT 			0x02
-#define READ_COMMAND            0x03
 
-#ifdef CONFIG_LCD_REGISTER_DEBUG
-#define LCD_DEBUG_BUF_SIZE            (10)
-
-enum {
-	LCD_DEBUG_NONE = 0,
-	LCD_DEBUG_READ_REG = 1,
-	LCD_DEBUG_WRITE_REG = 8347,
-};
-
-static int lcdc_hx8347d_debug_mask = LCD_DEBUG_NONE;
-module_param_named(lcd_debug_mask, lcdc_hx8347d_debug_mask, int, S_IRUGO | S_IWUSR | S_IWGRP);
-#endif
 
 struct hx8347d_state_type{
 	boolean disp_initialized;
@@ -56,17 +53,95 @@ struct command{
 	uint32 time;
 };
 
-/* del the initial code here, initialize it in arm9 */
-static const struct command hx8347d_truly_disp_off[] = 
+static const struct command hx8347d_init_table[] =
 {
-    {0x28, 0x38, 40},
-    {0x1F, 0x89, 40},
-    {0x28, 0x04, 40},
-    {0x28, 0x24, 40},
-    {0x19, 0x00, 5},
+    /* Select Command Page */
+    {0xFF, 0x00, 0},
+    //Driving ability Setting 
+    {0xEA, 0x00, 0}, //PTBA[15:8]
+    {0xEB, 0x20, 0}, //PTBA[7:0] 
+    {0xEC, 0x0C, 0}, //STBA[15:8]
+    {0xED, 0xC4, 0}, //STBA[7:0]
+    {0xE8, 0x40, 0}, //OPON[7:0] 
+    {0xE9, 0x38, 0}, //OPON1[7:0]
+    {0xF1, 0x01, 0}, //OTPS1B
+    {0xF2, 0x10, 0}, //GEN    
+    {0x27, 0xA3, 0},
+    /* Gamma control */
+    {0x40, 0x02, 0},
+    {0x41, 0x21, 0},
+    {0x42, 0x1F, 0},
+    {0x43, 0x21, 0},
+    {0x44, 0x1F, 0},
+    {0x45, 0x3D, 0},
+    {0x46, 0x0F, 0},
+    {0x47, 0x61, 0},
+    {0x48, 0x06, 0},
+    {0x49, 0x05, 0},
+    {0x4A, 0x06, 0},
+    {0x4B, 0x11, 0},
+    {0x4C, 0x1E, 0},
+    {0x50, 0x02, 0},
+    {0x51, 0x20, 0},
+    {0x52, 0x1E, 0},
+    {0x53, 0x20, 0},
+    {0x54, 0x1E, 0},
+    {0x55, 0x3D, 0},
+    {0x56, 0x1E, 0},
+    {0x57, 0x70, 0},
+    {0x58, 0x01, 0},
+    {0x59, 0x0E, 0},
+    {0x5A, 0x19, 0},
+    {0x5B, 0x1A, 0},
+    {0x5C, 0x19, 0},
+    {0x5D, 0x00, 0},
+    //Power Voltage Setting 
+    {0x1B, 0x1B, 0}, //VRH=4.65V                     
+    {0x1A, 0x01, 0}, //BT (VGH~15V,VGL~-10V,DDVDH~5V)
+    {0x24, 0x2F, 0}, //VMH(VCOM High voltage ~3.2V)  
+    {0x25, 0x57, 0}, //VML(VCOM Low voltage -1.2V)   
+    //****VCOM offset**///
+    {0x23, 0x86, 0}, //for Flicker adjust //can reload from OTP 
+    //Power on Setting 
+    {0x18, 0x36, 0}, //I/P_RADJ,N/P_RADJ, Normal mode 75Hz                   
+    {0x19, 0x01, 10}, //OSC_EN='1', start Osc                                 
+    {0x01, 0x00, 0}, //DP_STB='0', out deep sleep                            
+    {0x1F, 0x88, 10}, // GAS=1, VOMG=00, PON=0, DK=1, XDK=0, DVDH_TRI=0, STB=0
+    {0x1F, 0x80, 10}, // GAS=1, VOMG=00, PON=0, DK=0, XDK=0, DVDH_TRI=0, STB=0 
+    {0x1F, 0x90, 10}, // GAS=1, VOMG=00, PON=1, DK=0, XDK=0, DVDH_TRI=0, STB=0 
+    {0x1F, 0xD0, 10}, // GAS=1, VOMG=10, PON=1, DK=0, XDK=0, DVDH_TRI=0, STB=0 
+    //262k/65k color selection 
+//    {0x17, 0x05, 0}, //default 0x06 262k color // 0x05 65k color 
+    {0x17, 0x60, 0}, //RGB interface 18bit
+    {0x31, 0x02, 0},
+    {0x32, 0x0E, 0},
+    {0x33, 0x02, 0},
+    {0x34, 0x02, 0},
+    //SET PANEL 
+    {0x36, 0x00, 0}, //SS_P, GS_P,REV_P,BGR_P 
+    //Display ON Setting 
+    {0x28, 0x38, 40}, //GON=1, DTE=1, D=1000 
+    {0x28, 0x3C, 40},  //GON=1, DTE=1, D=1100
+    //Set GRAM Area 
+    {0x02, 0x00, 0},
+    {0x03, 0x00, 0}, //Column Start 
+    {0x04, 0x00, 0},
+    {0x05, 0xEF, 0}, //Column End 
+    {0x06, 0x00, 0},
+    {0x07, 0x00, 0}, //Row Start
+    {0x08, 0x01, 0},
+    {0x09, 0x3F, 0}, //Row End
 };
 
-static const struct command hx8347d_truly_disp_on[] = 
+static const struct command hx8347d_standby_enter_table[] = 
+{
+    { 0x28, 0xB8, 40},	
+    { 0x1F, 0x89, 40},
+    { 0x28, 0x04, 40},	
+    { 0x21, 0x00, 5},
+};
+
+static const struct command hx8347d_standby_exit_table[] = 
 {
     { 0x18, 0x36, 0},
     { 0x19, 0x01, 0},
@@ -75,27 +150,7 @@ static const struct command hx8347d_truly_disp_on[] =
     { 0x1F, 0x90, 5},
     { 0x1F, 0xD0, 5},
     { 0x28, 0x38, 40},
-    { 0x28, 0x3C, 0},
-};
-
-static const struct command hx8347d_innolux_disp_off[] = 
-{
-    {0x28, 0x38, 40},
-    {0x1F, 0x89, 40},
-    {0x28, 0x04, 40},
-    {0x28, 0x24, 40},
-    {0x19, 0x00, 5},
-};
-static const struct command hx8347d_innolux_disp_on[] = 
-{
-    { 0x18, 0x66, 0},
-    { 0x19, 0x01, 0},
-    { 0x1F, 0x88, 5},
-    { 0x1F, 0x80, 5},
-    { 0x1F, 0x90, 5},
-    { 0x1F, 0xD4, 5},
-    { 0x28, 0x38, 40},
-    { 0x28, 0x3C, 120},
+    { 0x28, 0x3F, 0},
 };
 
 static const struct command hx8347d_display_area_table[] = 
@@ -127,21 +182,6 @@ static void _serigo(uint8 reg, uint8 data)
     
     seriout_transfer_byte(reg, start_byte_reg);
     seriout_transfer_byte(data, start_byte_data);
-}
-
-static uint8 _seri_read(uint8 reg)
-{
-   uint8 start_byte_reg = DEVICE_ID | WRITE_REGISTER;
-   uint8 read_command = DEVICE_ID | READ_COMMAND;
-   uint8 value = 0;
-
-   seriout_transfer_byte(reg, start_byte_reg);
-
-   value = seri_read_byte(read_command);
-
-   printk(KERN_INFO "%s: spi read reg[0x%x] = 0x%x\n", __func__, reg, value);
-
-   return (value);
 }
 
 static void process_lcdc_table(struct command *table, size_t count)
@@ -177,7 +217,9 @@ static void hx8347d_disp_on(void)
     if (hx8347d_state.disp_powered_up && !hx8347d_state.display_on) 
     {
         LCD_DEBUG("%s: disp on lcd\n", __func__);
-		/* del comment lines */
+        /* Initialize LCD */
+        //process_lcdc_table((struct command*)&hx8347d_init_table, ARRAY_SIZE(hx8347d_init_table));
+        //seriout_transfer_byte(0x22, DEVICE_ID | WRITE_REGISTER);
         hx8347d_state.display_on = TRUE;
     }
 }
@@ -188,41 +230,6 @@ static void hx8347d_reset(void)
     lcdc_hx8347d_pdata->panel_config_gpio(1);
     lcd_reset_gpio = *(lcdc_hx8347d_pdata->gpio_num + 4);
     
-}
-void lcdc_hx8347d_cabc_set_backlight(uint8 level)
-{  
-    /* Select Command Page0 */
-    _serigo(0xFF, 0x00);
-    
-    /*BCTRL	=1	(Backlight Control Block, This bit is always used to switch brightness for display.)
-       DD	=1	(Display Dimming)
-       BL		=1	(Backlight Control)*/ 
-    _serigo(0x3D, 0x2C);
-    /*Set backlight level*/
-    _serigo(0x3C, level);
-
-    /* Set User Interface Image mode for content adaptive image functionality*/
-    _serigo(0x3E, 0x01);
-
-    /* set the minimum brightness value of the display for CABC function*/
-    _serigo(0x3F, 0x30);
-
-    _serigo(0xFF, 0x01);
-    _serigo(0xC3, 0x0F);
-    _serigo(0xC5, 0x27); 
-    
-    _serigo(0xCB, 0x24);
-    _serigo(0xCC, 0x24);
-    _serigo(0xCD, 0x24);
-    _serigo(0xCE, 0x23);
-    _serigo(0xCF, 0x23);
-    _serigo(0xD0, 0x23); 
-    _serigo(0xD1, 0x22);
-    _serigo(0xD2, 0x22);
-    _serigo(0xD3, 0x22);
-    
-    _serigo(0xFF, 0x00);
-	
 }
 
 static int hx8347d_panel_on(struct platform_device *pdev)
@@ -239,23 +246,7 @@ static int hx8347d_panel_on(struct platform_device *pdev)
     else if (!hx8347d_state.display_on) 
     {
         /* Exit Standby Mode */
-		switch (lcd_panel_qvga)
-		{
-			case LCD_HX8347D_TRULY_QVGA:
-		        process_lcdc_table((struct command*)&hx8347d_truly_disp_on, ARRAY_SIZE(hx8347d_truly_disp_on));
-				break;
-				
-			case LCD_HX8347D_INNOLUX_QVGA:
-		        process_lcdc_table((struct command*)&hx8347d_innolux_disp_on, ARRAY_SIZE(hx8347d_innolux_disp_on));
-				break;
-				
-			default:
-		        process_lcdc_table((struct command*)&hx8347d_truly_disp_on, ARRAY_SIZE(hx8347d_truly_disp_on));
-				break;
-		}
-
-		lcdc_hx8347d_cabc_set_backlight(0xFF);
-		
+        process_lcdc_table((struct command*)&hx8347d_standby_exit_table, ARRAY_SIZE(hx8347d_standby_exit_table));
         LCD_DEBUG("%s: Exit Standby Mode\n", __func__);
         hx8347d_state.display_on = TRUE;
     }
@@ -267,21 +258,7 @@ static int hx8347d_panel_off(struct platform_device *pdev)
 {
     if (hx8347d_state.disp_powered_up && hx8347d_state.display_on) {
         /* Enter Standby Mode */
-		switch (lcd_panel_qvga)
-		{
-			case LCD_HX8347D_TRULY_QVGA:
-		        process_lcdc_table((struct command*)&hx8347d_truly_disp_off, ARRAY_SIZE(hx8347d_truly_disp_off));
-				break;
-				
-			case LCD_HX8347D_INNOLUX_QVGA:
-		        process_lcdc_table((struct command*)&hx8347d_innolux_disp_off, ARRAY_SIZE(hx8347d_innolux_disp_off));
-				break;
-				
-			default:
-		        process_lcdc_table((struct command*)&hx8347d_truly_disp_off, ARRAY_SIZE(hx8347d_truly_disp_off));
-				break;
-		}
-		
+        process_lcdc_table((struct command*)&hx8347d_standby_enter_table, ARRAY_SIZE(hx8347d_standby_enter_table));
         hx8347d_state.display_on = FALSE;
         LCD_DEBUG("%s: Enter Standby Mode\n", __func__);
     }
@@ -336,98 +313,20 @@ static struct platform_device this_device = {
     }
 };
 
-#ifdef CONFIG_LCD_REGISTER_DEBUG
-static uint8  hx8347d_panel_register = 0;
-static int hx8347d_panel_read_proc(char *buf, char **start, off_t offset, 
-                          int len, int *unused_i, void *unused_v)
-{
-	int outlen = 0;
-	uint8 value = 0;
-
-	if(lcdc_hx8347d_debug_mask != LCD_DEBUG_NONE)
-	{
-		value = _seri_read(hx8347d_panel_register);
-		len = sprintf(buf,"reg[%x] = 0x%x\n",hx8347d_panel_register, value);
-		printk(KERN_INFO "%s: spi read reg[0x%x] = 0x%x\n", __func__, hx8347d_panel_register, value);
-	}
-	else
-	{
-		len = sprintf(buf,"reg[%x] = none\n",hx8347d_panel_register);
-	}
-	buf += len;
-	outlen += len;
-
-	return outlen;
-}
-
-static int hx8347d_panel_write_proc(struct file *file, const char __user *buffer,
-	unsigned long count, void *data)
-{
-	char buf[LCD_DEBUG_BUF_SIZE];
-	int ret = -EINVAL;
-	//char *after;
-	unsigned int state = 0;
-	unsigned int value = 0;
-	
-	if (copy_from_user(buf, buffer, LCD_DEBUG_BUF_SIZE)) {
-		ret = -EFAULT;
-		goto write_proc_failed;
-	}
-
-	//state = simple_strtoul(buf, &after, LCD_DEBUG_BUF_SIZE);
-	if(lcdc_hx8347d_debug_mask == LCD_DEBUG_WRITE_REG)
-	{
-		ret = sscanf(buf, "%x %x", &state, &value);
-		if(ret == 2)
-		{
-			/*spi out to register*/
-			_serigo(state, value);
-		}
-	}
-	else /*LCD_DEBUG_READ_REG or LCD_DEBUG_NONE*/
-	{
-		ret = sscanf(buf, "%x", &state);
-	}
-
-	printk(KERN_INFO "%s: hx8347d_panel_register is 0x%x, value = %d, ret = %d\n", __func__, state, value, ret);
-
-	hx8347d_panel_register = (uint8)state;
-
-	return count;
-
-write_proc_failed:
-	printk(KERN_ERR "%s:-= write proc ERROR! =-\n", __FUNCTION__);
-	return ret;
-}
-#endif
-
 static int __init hx8347d_panel_init(void)
 {
     int ret;
     struct msm_panel_info *pinfo;
-#ifdef CONFIG_LCD_REGISTER_DEBUG
-    struct proc_dir_entry *d_entry;
-#endif
 
     lcd_panel_qvga = lcd_panel_probe();
-	
     if((LCD_HX8347D_TRULY_QVGA != lcd_panel_qvga) && \
-		(LCD_HX8347D_INNOLUX_QVGA!= lcd_panel_qvga) && \
-        (msm_fb_detect_client(lCD_DRIVER_NAME))
+       (msm_fb_detect_client(lCD_DRIVER_NAME))
       )
     {
         return 0;
     }
 
-#ifdef CONFIG_LCD_REGISTER_DEBUG
-    d_entry = create_proc_entry("lcd_truly_reg", S_IRUGO | S_IWUSR | S_IWGRP, NULL);
-    if (d_entry) {
-        d_entry->read_proc = hx8347d_panel_read_proc;
-        d_entry->write_proc = hx8347d_panel_write_proc;
-        d_entry->data = NULL;
-    }
-#endif
-    
+
     ret = platform_driver_register(&this_driver);
     if (ret)
         return ret;

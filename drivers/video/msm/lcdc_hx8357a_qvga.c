@@ -431,7 +431,7 @@ static int __init hx8357a_panel_init(void)
 
     lcd_panel_qvga = lcd_panel_probe();
 /* U8300 need to support the HX8368a ic driver of TRULY LCD */
-    if((LCD_HX8357A_BYD_QVGA != lcd_panel_qvga) && \ 
+    if((LCD_HX8357A_BYD_QVGA != lcd_panel_qvga) && \
        (msm_fb_detect_client(lCD_DRIVER_NAME))
       )
     {
